@@ -195,20 +195,8 @@ public:
         }
 
         info.app_name = config.app_name;
-        assert(!config.arguments.empty());
-        executable_name.emplace_back(config.arguments[0]);
 
-        // all special options have been identified, which might involve deleting them from arguments (e.g. version-check)
-        // check if no actual options remain and then call the short help page.
-        if (config.arguments.size() == 1)
-        {
-            format = detail::format_short_help{};
-        }
-        else
-        {
-            auto span = std::span(++config.arguments.begin(), config.arguments.end());
-            init(span);
-        }
+        init(config.arguments);
     }
 
     //!\brief The destructor.
@@ -763,14 +751,22 @@ private:
      *
      * If `--export-help` is specified with a value other than html, man, cwl or ctd, an sharg::parser_error is thrown.
      */
-    void init(std::span<const std::string> const arguments)
+    void init(std::vector<std::string> const & arguments)
     {
         assert(!arguments.empty());
+        executable_name.emplace_back(arguments[0]);
 
         bool special_format_was_set{false};
-        bool version_check_requested{false};
 
-        for (auto it = arguments.begin(); it != arguments.end(); ++it)
+        // Helper function for going to the next argument. This makes it more obvious that we are
+        // incrementing `it` (version-check, and export-help).
+        auto go_to_next_arg = [&arguments](auto & it, std::string_view message) -> auto
+        {
+            if (++it == arguments.end())
+                throw too_few_arguments{message.data()};
+        };
+
+        for (auto it = ++arguments.begin(); it != arguments.end(); ++it) // start at 1 to skip binary name
         {
             std::string_view arg{*it};
 
@@ -778,11 +774,9 @@ private:
             {
                 if (std::ranges::find(subcommands, arg) != subcommands.end()) // identified subparser
                 {
-                    // LCOV_EXCL_START
                     sub_parser = std::make_unique<parser>(parser_config{.app_name = info.app_name + "-" + arg.data(),
                                                                         .arguments = {it, arguments.end()},
                                                                         .version_updates = update_notifications::off});
-                    // LCOV_EXCL_STOP
 
                     // Add the original calls to the front, e.g. ["raptor"],
                     // s.t. ["raptor", "build"] will be the list after constructing the subparser
@@ -803,22 +797,29 @@ private:
 
             if (arg == "-h" || arg == "--help")
             {
-                format = detail::format_help{subcommands, version_check_dev_decision, false};
                 special_format_was_set = true;
+                format = detail::format_help{subcommands, version_check_dev_decision, false};
             }
             else if (arg == "-hh" || arg == "--advanced-help")
             {
-                format = detail::format_help{subcommands, version_check_dev_decision, true};
                 special_format_was_set = true;
+                format = detail::format_help{subcommands, version_check_dev_decision, true};
             }
             else if (arg == "--version")
             {
-                format = detail::format_version{};
                 special_format_was_set = true;
+                format = detail::format_version{};
+            }
+            else if (arg == "--copyright")
+            {
+                special_format_was_set = true;
+                format = detail::format_copyright{};
             }
             else if (arg.substr(0, 13) == "--export-help") // --export-help=man is also allowed
             {
-                std::string export_format;
+                special_format_was_set = true;
+
+                std::string_view export_format;
 
                 if (arg.size() > 13)
                 {
@@ -826,8 +827,7 @@ private:
                 }
                 else
                 {
-                    if (++it == arguments.end())
-                        throw too_few_arguments{"Option --export-help must be followed by a value."};
+                    go_to_next_arg(it, "Option --export-help must be followed by a value.");
                     export_format = *it;
                 }
 
@@ -843,18 +843,10 @@ private:
                     throw validation_error{"Validation failed for option --export-help: "
                                            "Value must be one of "
                                            + detail::supported_exports + "."};
-                special_format_was_set = true;
-            }
-            else if (arg == "--copyright")
-            {
-                format = detail::format_copyright{};
-                special_format_was_set = true;
             }
             else if (arg == "--version-check")
             {
-                if (++it == arguments.end())
-                    throw too_few_arguments{"Option --version-check must be followed by a value."};
-
+                go_to_next_arg(it, "Option --version-check must be followed by a value.");
                 arg = *it;
 
                 if (arg == "1" || arg == "true")
@@ -863,8 +855,6 @@ private:
                     version_check_user_decision = false;
                 else
                     throw validation_error{"Value for option --version-check must be true (1) or false (0)."};
-
-                version_check_requested = true;
             }
             else
             {
@@ -872,9 +862,15 @@ private:
             }
         }
 
-        // in case --version-check is specified it shall not be passed to format_parse()
-        if (!special_format_was_set)
-            format = detail::format_parse(arguments.size() - 2 * version_check_requested, cmd_arguments);
+        if (special_format_was_set)
+            return;
+
+        // all special options have been identified, which might involve deleting them from arguments (e.g. version-check)
+        // check if no actual options remain and then call the short help page.
+        if (cmd_arguments.empty())
+            format = detail::format_short_help{};
+        else
+            format = detail::format_parse(cmd_arguments);
     }
 
     /*!\brief Checks whether the long identifier has already been used before.
