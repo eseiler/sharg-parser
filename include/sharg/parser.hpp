@@ -181,13 +181,9 @@ public:
      * \details
      * \stableapi{Since version 1.0.}
      */
-    parser(std::string const & app_name,
-           int const argc,
-           char const * const * const argv,
-           update_notifications version_updates = update_notifications::on,
-           std::vector<std::string> subcommands = {}) :
-        version_check_dev_decision{version_updates},
-        subcommands{std::move(subcommands)}
+    parser(parser_config const & config) :
+        version_check_dev_decision{config.version_updates},
+        subcommands{config.subcommands}
     {
         for (auto & sub : this->subcommands)
         {
@@ -198,9 +194,21 @@ public:
             }
         }
 
-        info.app_name = app_name;
+        info.app_name = config.app_name;
+        assert(!config.arguments.empty());
+        executable_name.emplace_back(config.arguments[0]);
 
-        init(argc, argv);
+        // all special options have been identified, which might involve deleting them from arguments (e.g. version-check)
+        // check if no actual options remain and then call the short help page.
+        if (config.arguments.size() == 1)
+        {
+            format = detail::format_short_help{};
+        }
+        else
+        {
+            auto span = std::span(++config.arguments.begin(), config.arguments.end());
+            init(span);
+        }
     }
 
     //!\brief The destructor.
@@ -755,26 +763,26 @@ private:
      *
      * If `--export-help` is specified with a value other than html, man, cwl or ctd, an sharg::parser_error is thrown.
      */
-    void init(int argc, char const * const * const argv)
+    void init(std::span<const std::string> const arguments)
     {
-        assert(argc > 0);
-        executable_name.emplace_back(argv[0]);
+        assert(!arguments.empty());
 
         bool special_format_was_set{false};
+        bool version_check_requested{false};
 
-        for (int i = 1, argv_len = argc; i < argv_len; ++i) // start at 1 to skip binary name
+        for (size_t i = 0; i < arguments.size(); ++i)
         {
-            std::string_view arg{argv[i]};
+            std::string_view arg{arguments[i]};
 
             if (!subcommands.empty()) // this is a top_level parser
             {
                 if (std::ranges::find(subcommands, arg) != subcommands.end()) // identified subparser
                 {
                     // LCOV_EXCL_START
-                    sub_parser = std::make_unique<parser>(info.app_name + "-" + arg.data(),
-                                                          argc - i,
-                                                          argv + i,
-                                                          update_notifications::off);
+                    auto subspan = arguments.subspan(i);
+                    sub_parser = std::make_unique<parser>(parser_config{.app_name = info.app_name + "-" + arg.data(),
+                                                                        .arguments = {subspan.begin(), subspan.end()},
+                                                                        .version_updates = update_notifications::off});
                     // LCOV_EXCL_STOP
 
                     // Add the original calls to the front, e.g. ["raptor"],
@@ -819,9 +827,9 @@ private:
                 }
                 else
                 {
-                    if (argv_len <= i + 1)
+                    if (arguments.size() <= i + 1)
                         throw too_few_arguments{"Option --export-help must be followed by a value."};
-                    export_format = std::string{argv[i + 1]};
+                    export_format = arguments[i + 1];
                 }
 
                 if (export_format == "html")
@@ -845,10 +853,10 @@ private:
             }
             else if (arg == "--version-check")
             {
-                if (++i >= argv_len)
+                if (++i >= arguments.size())
                     throw too_few_arguments{"Option --version-check must be followed by a value."};
 
-                arg = argv[i];
+                arg = arguments[i];
 
                 if (arg == "1" || arg == "true")
                     version_check_user_decision = true;
@@ -857,8 +865,7 @@ private:
                 else
                     throw validation_error{"Value for option --version-check must be true (1) or false (0)."};
 
-                // in case --version-check is specified it shall not be passed to format_parse()
-                argc -= 2;
+                version_check_requested = true;
             }
             else
             {
@@ -866,16 +873,9 @@ private:
             }
         }
 
-        // all special options have been identified, which might involve deleting them from argv (e.g. version-check)
-        // check if no actual options remain and then call the short help page.
-        if (argc <= 1) // no arguments provided
-        {
-            format = detail::format_short_help{};
-            return;
-        }
-
+        // in case --version-check is specified it shall not be passed to format_parse()
         if (!special_format_was_set)
-            format = detail::format_parse(argc, cmd_arguments);
+            format = detail::format_parse(arguments.size() - 2 * version_check_requested, cmd_arguments);
     }
 
     /*!\brief Checks whether the long identifier has already been used before.

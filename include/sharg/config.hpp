@@ -135,4 +135,12 @@ struct config
     validator_t validator{};
 };
 
+struct parser_config
+{
+    std::string app_name{};
+    std::vector<std::string> arguments{};
+    update_notifications version_updates{update_notifications::on};
+    std::vector<std::string> subcommands{};
+};
+
 } // namespace sharg
