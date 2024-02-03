@@ -650,6 +650,7 @@ private:
      */
     void check_for_left_over_args()
     {
+        // std::cout << "parse: " << detail::to_string(argv) << '\n';
         if (std::find_if(argv.begin(),
                          argv.end(),
                          [](std::string const & s)

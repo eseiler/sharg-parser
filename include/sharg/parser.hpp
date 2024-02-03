@@ -770,18 +770,17 @@ private:
         bool special_format_was_set{false};
         bool version_check_requested{false};
 
-        for (size_t i = 0; i < arguments.size(); ++i)
+        for (auto it = arguments.begin(); it != arguments.end(); ++it)
         {
-            std::string_view arg{arguments[i]};
+            std::string_view arg{*it};
 
             if (!subcommands.empty()) // this is a top_level parser
             {
                 if (std::ranges::find(subcommands, arg) != subcommands.end()) // identified subparser
                 {
                     // LCOV_EXCL_START
-                    auto subspan = arguments.subspan(i);
                     sub_parser = std::make_unique<parser>(parser_config{.app_name = info.app_name + "-" + arg.data(),
-                                                                        .arguments = {subspan.begin(), subspan.end()},
+                                                                        .arguments = {it, arguments.end()},
                                                                         .version_updates = update_notifications::off});
                     // LCOV_EXCL_STOP
 
@@ -827,9 +826,9 @@ private:
                 }
                 else
                 {
-                    if (arguments.size() <= i + 1)
+                    if (++it == arguments.end())
                         throw too_few_arguments{"Option --export-help must be followed by a value."};
-                    export_format = arguments[i + 1];
+                    export_format = *it;
                 }
 
                 if (export_format == "html")
@@ -853,10 +852,10 @@ private:
             }
             else if (arg == "--version-check")
             {
-                if (++i >= arguments.size())
+                if (++it == arguments.end())
                     throw too_few_arguments{"Option --version-check must be followed by a value."};
 
-                arg = arguments[i];
+                arg = *it;
 
                 if (arg == "1" || arg == "true")
                     version_check_user_decision = true;
