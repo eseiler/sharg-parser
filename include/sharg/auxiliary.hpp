@@ -27,8 +27,9 @@ namespace sharg
  */
 enum class update_notifications
 {
-    on, //!< Automatic update notifications should be enabled.
-    off //!< Automatic update notifications should be disabled.
+    ask, //!< Automatic update notifications should be enabled, if the user agrees.
+    off, //!< Automatic update notifications should be disabled.
+    on [[deprecated("blah")]] = ask
 };
 
 /*!\brief Stores all parser related meta information of the sharg::parser.

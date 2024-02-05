@@ -556,7 +556,7 @@ TEST(parse_test, subcommand_parser)
     std::string option_value2{};
 
     char const * argv[]{"./test_parser", "-h"};
-    sharg::parser top_level_parser{"test_parser", 2, argv, sharg::update_notifications::on, {"sub1", "sub2"}};
+    sharg::parser top_level_parser{"test_parser", 2, argv, sharg::update_notifications::ask, {"sub1", "sub2"}};
     sharg::detail::test_accessor::set_terminal_width(top_level_parser, 80);
     top_level_parser.info.description.push_back("description");
     top_level_parser.add_option(option_value,

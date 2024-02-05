@@ -341,7 +341,7 @@ public:
         derived_t().print_list_item("\\fB--export-help\\fP (std::string)",
                                     "Export the help page information. Value must be one of "
                                         + detail::supported_exports + ".");
-        if (version_check_dev_decision == update_notifications::on)
+        if (version_check_dev_decision == update_notifications::ask)
             derived_t().print_list_item("\\fB--version-check\\fP (bool)",
                                         "Whether to check for the newest app version. Default: true.");
 

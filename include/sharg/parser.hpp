@@ -170,7 +170,7 @@ public:
      * \param[in] app_name The name of the app that is displayed on the help page.
      * \param[in] argc The number of command line arguments.
      * \param[in] argv The command line arguments to parse.
-     * \param[in] version_updates Notify users about version updates (default sharg::update_notifications::on).
+     * \param[in] version_updates Notify users about version updates (default sharg::update_notifications::ask).
      * \param[in] subcommands A list of subcommands (see \link subcommand_parse subcommand parsing \endlink).
      *
      * \throws sharg::design_error if the application name contains illegal characters.
@@ -187,7 +187,7 @@ public:
     parser(std::string const & app_name,
            int const argc,
            char const * const * const argv,
-           update_notifications version_updates = update_notifications::on,
+           update_notifications version_updates = update_notifications::ask,
            std::vector<std::string> subcommands = {}) :
         version_check_dev_decision{version_updates},
         subcommands{std::move(subcommands)}

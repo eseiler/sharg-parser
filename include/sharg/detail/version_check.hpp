@@ -266,7 +266,7 @@ public:
     }
 
     /*!\brief The central decision whether to perform the version check or not.
-     * \param[in] developer_approval Whether the developer approved (update_notifications::on) or not
+     * \param[in] developer_approval Whether the developer approved (update_notifications::ask) or not
      *                               (update_notifications::off).
      * \param[in] user_approval      Whether the user approved (true) or not (false) or did not decide (unset optional).
      *
