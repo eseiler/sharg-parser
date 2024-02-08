@@ -185,21 +185,11 @@ public:
            update_notifications version_updates = update_notifications::on,
            std::vector<std::string> subcommands = {}) :
         version_check_dev_decision{version_updates},
-        subcommands{std::move(subcommands)},
         original_arguments{arguments}
     {
-        for (auto & sub : this->subcommands)
-        {
-            if (!std::regex_match(sub, app_name_regex))
-            {
-                throw design_error{"The subcommand name must only contain alpha-numeric characters or '_' and '-' "
-                                   "(regex: \"^[a-zA-Z0-9_-]+$\")."};
-            }
-        }
-
         info.app_name = app_name;
 
-        init();
+        add_subcommands(std::move(subcommands));
     }
 
     //!\overload
@@ -674,9 +664,42 @@ public:
      */
     parser_meta_data info;
 
+    /*!\brief Adds subcommands to the parser.
+     * \param[in] subcommands A list of subcommands.
+     * \throws sharg::design_error if the subcommand name contains illegal characters.
+     */
+    void add_subcommands(std::vector<std::string> const & subcommands)
+    {
+        for (auto const & sub : subcommands)
+        {
+            if (!std::regex_match(sub, app_name_regex))
+            {
+                std::string const error_message =
+                    detail::to_string(std::quoted(info.app_name),
+                                      " contains an invalid subcommand name: ",
+                                      std::quoted(sub),
+                                      ". The subcommand name must only contain alpha-numeric characters ",
+                                      "or '_' and '-' (regex: \"^[a-zA-Z0-9_-]+$\").");
+                throw design_error{error_message};
+            };
+        }
+
+        auto & parser_subcommands = this->subcommands;
+        parser_subcommands.insert(parser_subcommands.end(), subcommands.cbegin(), subcommands.cend());
+
+        std::ranges::sort(parser_subcommands);
+        auto const [first, last] = std::ranges::unique(parser_subcommands);
+        parser_subcommands.erase(first, last);
+
+        init();
+    }
+
 private:
     //!\brief Keeps track of whether the parse function has been called already.
     bool parse_was_called{false};
+
+    //!\brief Keeps track of whether the init function has been called already.
+    bool init_was_called{false};
 
     //!\brief Keeps track of whether the user has added a positional list option to check if this was the very last.
     bool has_positional_list_option{false};
