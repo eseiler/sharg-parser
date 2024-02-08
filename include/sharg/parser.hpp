@@ -240,6 +240,7 @@ public:
               && std::invocable<validator_type, option_type>
     void add_option(option_type & value, config<validator_type> const & config)
     {
+        check_parse_not_called("add_option");
         verify_option_config(config);
 
         // copy variables into the lambda because the calls are pushed to a stack
@@ -266,6 +267,7 @@ public:
         requires std::invocable<validator_type, bool>
     void add_flag(bool & value, config<validator_type> const & config)
     {
+        check_parse_not_called("add_flag");
         verify_flag_config(config);
 
         if (value)
@@ -308,6 +310,7 @@ public:
               && std::invocable<validator_type, option_type>
     void add_positional_option(option_type & value, config<validator_type> const & config)
     {
+        check_parse_not_called("add_positional_option");
         verify_positional_option_config(config);
 
         if constexpr (detail::is_container_option<option_type>)
@@ -535,6 +538,7 @@ public:
      */
     void add_section(std::string const & title, bool const advanced_only = false)
     {
+        check_parse_not_called("add_section");
         std::visit(
             [&title, advanced_only](auto & f)
             {
@@ -554,6 +558,7 @@ public:
      */
     void add_subsection(std::string const & title, bool const advanced_only = false)
     {
+        check_parse_not_called("add_subsection");
         std::visit(
             [&title, advanced_only](auto & f)
             {
@@ -574,6 +579,7 @@ public:
      */
     void add_line(std::string const & text, bool is_paragraph = false, bool const advanced_only = false)
     {
+        check_parse_not_called("add_line");
         std::visit(
             [&text, is_paragraph, advanced_only](auto & f)
             {
@@ -603,6 +609,7 @@ public:
      */
     void add_list_item(std::string const & key, std::string const & desc, bool const advanced_only = false)
     {
+        check_parse_not_called("add_list_item");
         std::visit(
             [&key, &desc, advanced_only](auto & f)
             {
@@ -670,6 +677,7 @@ public:
      */
     void add_subcommands(std::vector<std::string> const & subcommands)
     {
+        check_parse_not_called("add_subcommands");
         for (auto const & sub : subcommands)
         {
             if (!std::regex_match(sub, app_name_regex))
@@ -1015,6 +1023,21 @@ private:
 
         if (!config.default_message.empty())
             throw design_error{"A positional option may not have a default message because it is always required."};
+    }
+
+    /*!\brief Throws a sharg::design_error if parse() was already called.
+     * \param[in] function_name The name of the function that was called after parse().
+     * \throws sharg::design_error
+     * \details
+     * This function is used when calling functions which have no effect (add_line, add_option, ...) or unexpected
+     * behavior (add_subcommands) after parse() was called.
+     * Has no effect when parse() encounters a special format (help, version, ...), since those will terminate
+     * the program.
+     */
+    inline void check_parse_not_called(std::string_view const function_name) const
+    {
+        if (parse_was_called)
+            throw design_error{detail::to_string(function_name.data(), " may only be used before calling parse().")};
     }
 };
 
