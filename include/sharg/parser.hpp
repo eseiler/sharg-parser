@@ -698,9 +698,6 @@ private:
     //!\brief Keeps track of whether the parse function has been called already.
     bool parse_was_called{false};
 
-    //!\brief Keeps track of whether the init function has been called already.
-    bool init_was_called{false};
-
     //!\brief Keeps track of whether the user has added a positional list option to check if this was the very last.
     bool has_positional_list_option{false};
 
@@ -748,7 +745,7 @@ private:
     //!\brief List of option/flag identifiers that are already used.
     std::set<std::string> used_option_ids{"h", "hh", "help", "advanced-help", "export-help", "version", "copyright"};
 
-    //!\brief The command line arguments.
+    //!\brief The command line arguments that will be passed to the format.
     std::vector<std::string> cmd_arguments{};
 
     //!\brief The original command line arguments.
@@ -788,15 +785,18 @@ private:
     {
         assert(!original_arguments.empty());
 
-        if (init_was_called)
-        {
-            cmd_arguments.clear();
-        }
-        else
-        {
+        // If init() is called multiple times (via add_subcommands):
+        // * We need to clear cmd_arguments. They will be parsed again.
+        // * We need to handle executable_name:
+        //   * If it is empty:
+        //      * We are in the top level parser, or
+        //      * We are constructing a subparser: make_unique<parser> -> constructor -> init
+        //   * If it is not empty, we arrived here through a call to add_subcommands, in which case we already
+        //     appended the subcommand to the executable_name.
+        cmd_arguments.clear();
+
+        if (executable_name.empty())
             executable_name.emplace_back(original_arguments[0]);
-            init_was_called = true;
-        }
 
         bool special_format_was_set{false};
 
