@@ -793,18 +793,25 @@ private:
     {
         assert(!original_arguments.empty());
 
-        // If init() is called multiple times (via add_subcommands):
+        // Start: If init() is called multiple times (via add_subcommands).
+
+        // * If sub_parser is set, nothing needs to be done. There can only ever be one subparser.
+        if (sub_parser)
+            return;
+
         // * We need to clear cmd_arguments. They will be parsed again.
+        cmd_arguments.clear();
+
         // * We need to handle executable_name:
         //   * If it is empty:
         //      * We are in the top level parser, or
         //      * We are constructing a subparser: make_unique<parser> -> constructor -> init
         //   * If it is not empty, we arrived here through a call to add_subcommands, in which case we already
         //     appended the subcommand to the executable_name.
-        cmd_arguments.clear();
-
         if (executable_name.empty())
             executable_name.emplace_back(original_arguments[0]);
+
+        // End: If init() is called multiple times (via add_subcommands).
 
         bool special_format_was_set{false};
 
