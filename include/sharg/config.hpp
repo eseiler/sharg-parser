@@ -14,6 +14,31 @@
 namespace sharg
 {
 
+struct validator_holder
+{
+    std::shared_ptr<validator_base> validator_ptr{};
+
+    template <typename validator_t>
+    validator_holder(validator_t & validator) :
+        validator_ptr{std::make_shared<validator_t>(validator)}
+    {}
+
+    template <typename validator_t>
+    validator_holder(validator_t && validator) :
+        validator_ptr{std::make_shared<validator_t>(std::forward<validator_t>(validator))}
+    {}
+
+    void operator()(std::any const & cmp) const
+    {
+        return validator_ptr->operator()(cmp);
+    }
+
+    std::string get_help_page_message() const
+    {
+        return validator_ptr->get_help_page_message();
+    }
+};
+
 /*!\brief Option struct that is passed to the `sharg::parser::add_option()` function.
  * \ingroup parser
  *
@@ -131,7 +156,7 @@ struct config
      * \details
      * \stableapi{Since version 1.0.}
      */
-    validator_base * validator{nullptr};
+    validator_holder validator;
 };
 
 } // namespace sharg

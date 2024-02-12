@@ -11,8 +11,12 @@ int main(int argc, char const ** argv)
     //![validator_call]
     std::vector<int> myint;
     sharg::arithmetic_range_validator my_validator{2, 10};
+    // sharg::arithmetic_range_validator{2, 10}
+    // &my_validator
 
-    myparser.add_positional_option(myint, {.description = "Give me a number.", .validator = &my_validator});
+    myparser.add_positional_option(
+        myint,
+        {.description = "Give me a number.", .validator = my_validator});
     //![validator_call]
 
     // an exception will be thrown if the user specifies an integer

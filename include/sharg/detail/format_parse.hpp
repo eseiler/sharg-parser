@@ -691,7 +691,7 @@ private:
         {
             try
             {
-                config.validator->operator()(value);
+                config.validator.operator()(value);
             }
             catch (std::exception & ex)
             {
@@ -780,7 +780,7 @@ private:
                                   });
                 try
                 {
-                    validator->operator()(value.back());
+                    validator.operator()(value.back());
                 }
                 catch (std::exception & ex)
                 {
@@ -800,7 +800,7 @@ private:
 
             try
             {
-                validator->operator()(value);
+                validator.operator()(value);
             }
             catch (std::exception & ex)
             {

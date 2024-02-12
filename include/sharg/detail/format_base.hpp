@@ -286,7 +286,7 @@ public:
         else
             info += get_default_message(value, config.default_message);
 
-        if (auto const & validator_message = config.validator->get_help_page_message(); !validator_message.empty())
+        if (auto const & validator_message = config.validator.get_help_page_message(); !validator_message.empty())
             info += ". " + validator_message;
 
         store_help_page_element(
@@ -332,7 +332,7 @@ public:
 
         auto positional_validator_message = [&config]() -> std::string
         {
-            if (auto const & validator_message = config.validator->get_help_page_message(); !validator_message.empty())
+            if (auto const & validator_message = config.validator.get_help_page_message(); !validator_message.empty())
                 return ". " + validator_message;
             else
                 return {};

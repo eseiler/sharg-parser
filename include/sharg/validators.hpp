@@ -32,6 +32,8 @@ struct validator_base
     {
         return "";
     }
+
+    virtual ~validator_base() = default; // needed if unique ptr
 };
 
 namespace detail
