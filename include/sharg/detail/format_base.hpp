@@ -275,8 +275,8 @@ public:
     /*!\brief Adds a sharg::print_list_item call to be evaluated later on.
      * \copydetails sharg::parser::add_option
      */
-    template <typename option_type, typename validator_t>
-    void add_option(option_type & value, config<validator_t> const & config)
+    template <typename option_type>
+    void add_option(option_type & value, config const & config)
     {
         std::string id = prep_id_for_help(config.short_id, config.long_id) + " " + option_type_and_list_info(value);
         std::string info{config.description};
@@ -286,7 +286,7 @@ public:
         else
             info += get_default_message(value, config.default_message);
 
-        if (auto const & validator_message = config.validator.get_help_page_message(); !validator_message.empty())
+        if (auto const & validator_message = config.validator->get_help_page_message(); !validator_message.empty())
             info += ". " + validator_message;
 
         store_help_page_element(
@@ -300,8 +300,7 @@ public:
     /*!\brief Adds a sharg::print_list_item call to be evaluated later on.
      * \copydetails sharg::parser::add_flag
      */
-    template <typename validator_t>
-    void add_flag(bool & SHARG_DOXYGEN_ONLY(value), config<validator_t> const & config)
+    void add_flag(bool & SHARG_DOXYGEN_ONLY(value), config const & config)
     {
         store_help_page_element(
             [this, id = prep_id_for_help(config.short_id, config.long_id), description = config.description]()
@@ -314,8 +313,8 @@ public:
     /*!\brief Adds a sharg::print_list_item call to be evaluated later on.
      * \copydetails sharg::parser::add_positional_option
      */
-    template <typename option_type, typename validator_t>
-    void add_positional_option(option_type & value, config<validator_t> const & config)
+    template <typename option_type>
+    void add_positional_option(option_type & value, config const & config)
     {
         // a list at the end may be empty and thus have a default value
         auto positional_default_message = [&value]() -> std::string
@@ -333,7 +332,7 @@ public:
 
         auto positional_validator_message = [&config]() -> std::string
         {
-            if (auto const & validator_message = config.validator.get_help_page_message(); !validator_message.empty())
+            if (auto const & validator_message = config.validator->get_help_page_message(); !validator_message.empty())
                 return ". " + validator_message;
             else
                 return {};
@@ -647,8 +646,7 @@ private:
      * If `config.advanced = true`, the information is only added to the help page if
      * the advanced help page has been queried on the command line (`show_advanced_options == true`).
      */
-    template <typename validator_t>
-    void store_help_page_element(std::function<void()> printer, config<validator_t> const & config)
+    void store_help_page_element(std::function<void()> printer, config const & config)
     {
         if (!(config.hidden) && (!(config.advanced) || show_advanced_options))
             parser_set_up_calls.push_back(std::move(printer));

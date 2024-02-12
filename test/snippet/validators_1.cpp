@@ -9,14 +9,10 @@ int main(int argc, char const ** argv)
     sharg::parser myparser{"Test", argc, argv}; // initialize
 
     //![validator_call]
-    int myint;
+    std::vector<int> myint;
     sharg::arithmetic_range_validator my_validator{2, 10};
 
-    myparser.add_option(myint,
-                        sharg::config{.short_id = 'i',
-                                      .long_id = "integer",
-                                      .description = "Give me a number.",
-                                      .validator = my_validator});
+    myparser.add_positional_option(myint, {.description = "Give me a number.", .validator = &my_validator});
     //![validator_call]
 
     // an exception will be thrown if the user specifies an integer
@@ -31,6 +27,10 @@ int main(int argc, char const ** argv)
         return -1;
     }
 
-    std::cerr << "integer given by user passed validation: " << myint << "\n";
+    std::cerr << "integer given by user passed validation: ";
+    for (auto const & i : myint)
+        std::cerr << i << ' ';
+    std::cerr << '\n';
+
     return 0;
 }

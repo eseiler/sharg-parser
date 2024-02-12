@@ -237,10 +237,9 @@ public:
      * \details
      * \stableapi{Since version 1.0.}
      */
-    template <typename option_type, typename validator_type>
+    template <typename option_type>
         requires (parsable<option_type> || parsable<std::ranges::range_value_t<option_type>>)
-              && std::invocable<validator_type, option_type>
-    void add_option(option_type & value, config<validator_type> const & config)
+    void add_option(option_type & value, config const & config)
     {
         verify_option_config(config);
 
@@ -264,9 +263,7 @@ public:
      * \details
      * \stableapi{Since version 1.0.}
      */
-    template <typename validator_type>
-        requires std::invocable<validator_type, bool>
-    void add_flag(bool & value, config<validator_type> const & config)
+    void add_flag(bool & value, config const & config)
     {
         verify_flag_config(config);
 
@@ -305,10 +302,9 @@ public:
      *
      * \stableapi{Since version 1.0.}
      */
-    template <typename option_type, typename validator_type>
+    template <typename option_type>
         requires (parsable<option_type> || parsable<std::ranges::range_value_t<option_type>>)
-              && std::invocable<validator_type, option_type>
-    void add_positional_option(option_type & value, config<validator_type> const & config)
+    void add_positional_option(option_type & value, config const & config)
     {
         verify_positional_option_config(config);
 
@@ -932,8 +928,7 @@ private:
     }
 
     //!brief Verify the configuration given to a sharg::parser::add_option call.
-    template <typename validator_t>
-    void verify_option_config(config<validator_t> const & config)
+    void verify_option_config(config const & config)
     {
         if (sub_parser != nullptr)
             throw design_error{"You may only specify flags for the top-level parser."};
@@ -945,8 +940,7 @@ private:
     }
 
     //!brief Verify the configuration given to a sharg::parser::add_flag call.
-    template <typename validator_t>
-    void verify_flag_config(config<validator_t> const & config)
+    void verify_flag_config(config const & config)
     {
         verify_identifiers(config.short_id, config.long_id);
 
@@ -955,8 +949,7 @@ private:
     }
 
     //!brief Verify the configuration given to a sharg::parser::add_positional_option call.
-    template <typename validator_t>
-    void verify_positional_option_config(config<validator_t> const & config) const
+    void verify_positional_option_config(config const & config) const
     {
         if (config.short_id != '\0' || config.long_id != "")
             throw design_error{"Positional options are identified by their position on the command line. "

@@ -69,8 +69,8 @@ public:
     /*!\brief Adds an sharg::detail::get_option call to be evaluated later on.
      * \copydetails sharg::parser::add_option
      */
-    template <typename option_type, typename validator_t>
-    void add_option(option_type & value, config<validator_t> const & config)
+    template <typename option_type>
+    void add_option(option_type & value, config const & config)
     {
         option_calls.push_back(
             [this, &value, config]()
@@ -82,8 +82,7 @@ public:
     /*!\brief Adds a get_flag call to be evaluated later on.
      * \copydetails sharg::parser::add_flag
      */
-    template <typename validator_t>
-    void add_flag(bool & value, config<validator_t> const & config)
+    void add_flag(bool & value, config const & config)
     {
         flag_calls.push_back(
             [this, &value, config]()
@@ -95,8 +94,8 @@ public:
     /*!\brief Adds a get_positional_option call to be evaluated later on.
      * \copydetails sharg::parser::add_positional_option
      */
-    template <typename option_type, typename validator_t>
-    void add_positional_option(option_type & value, config<validator_t> const & config)
+    template <typename option_type>
+    void add_positional_option(option_type & value, config const & config)
     {
         positional_option_calls.push_back(
             [this, &value, config]()
@@ -677,8 +676,8 @@ private:
      * - throws on (mis)use of both identifiers for non-container type values,
      * - re-throws the validation exception with appended option information.
      */
-    template <typename option_type, typename validator_t>
-    void get_option(option_type & value, config<validator_t> const & config)
+    template <typename option_type>
+    void get_option(option_type & value, config const & config)
     {
         bool short_id_is_set{get_option_by_id(value, config.short_id)};
         bool long_id_is_set{get_option_by_id(value, config.long_id)};
@@ -692,7 +691,7 @@ private:
         {
             try
             {
-                config.validator(value);
+                config.validator->operator()(value);
             }
             catch (std::exception & ex)
             {
@@ -759,8 +758,8 @@ private:
                                     + std::to_string(positional_option_calls.size())
                                     + "). See -h/--help for more information.");
 
-        if constexpr (detail::is_container_option<
-                          option_type>) // vector/list will be filled with all remaining arguments
+        // vector/list will be filled with all remaining arguments
+        if constexpr (detail::is_container_option<option_type>)
         {
             assert(positional_option_count == positional_option_calls.size()); // checked on set up.
 
@@ -779,6 +778,15 @@ private:
                                   {
                                       return (s != "");
                                   });
+                try
+                {
+                    validator->operator()(value.back());
+                }
+                catch (std::exception & ex)
+                {
+                    throw validation_error("Validation failed for positional option "
+                                           + std::to_string(positional_option_count) + ": " + ex.what());
+                }
                 ++positional_option_count;
             }
         }
@@ -789,16 +797,16 @@ private:
             throw_on_input_error<option_type>(res, id, *it);
 
             *it = ""; // remove arg from argv
-        }
 
-        try
-        {
-            validator(value);
-        }
-        catch (std::exception & ex)
-        {
-            throw validation_error("Validation failed for positional option " + std::to_string(positional_option_count)
-                                   + ": " + ex.what());
+            try
+            {
+                validator->operator()(value);
+            }
+            catch (std::exception & ex)
+            {
+                throw validation_error("Validation failed for positional option "
+                                       + std::to_string(positional_option_count) + ": " + ex.what());
+            }
         }
     }
 

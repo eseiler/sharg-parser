@@ -24,6 +24,49 @@
 namespace sharg
 {
 
+struct validator_base
+{
+    virtual void operator()(std::any const &) const = 0;
+
+    virtual std::string get_help_page_message() const
+    {
+        return "";
+    }
+};
+
+namespace detail
+{
+
+/*!\brief Validator that always returns true.
+ * \ingroup validators
+ * \implements sharg::validator
+ *
+ * \details
+ *
+ * The default validator is needed to make the validator parameter of
+ * parser::add_option and parser::add_option optional.
+ *
+ * \remark For a complete overview, take a look at \ref parser
+ */
+struct default_validator
+{
+    //!\brief Dummy type needed to model sharg::validator but any type is accepted in the `operator()`.
+    using option_value_type = std::any;
+
+    //!\brief Value cmp always passes validation for any type and never throws.
+    template <typename option_value_t>
+    void operator()(option_value_t const & /*cmp*/) const noexcept
+    {}
+
+    //!\brief Since no validation is happening the help message is empty.
+    std::string get_help_page_message() const
+    {
+        return "";
+    }
+};
+
+} // namespace detail
+
 /*!\concept sharg::validator
  * \brief The concept for option validators passed to add_option/positional_option.
  * \ingroup validators
@@ -75,11 +118,16 @@ concept validator = std::copyable<std::remove_cvref_t<validator_type>> &&
  */
 template <typename option_value_t>
     requires std::is_arithmetic_v<option_value_t>
-class arithmetic_range_validator
+class arithmetic_range_validator : public validator_base
 {
 public:
     //!\brief The type of value that this validator invoked upon.
     using option_value_type = option_value_t;
+
+    void operator()(std::any const & cmp) const
+    {
+        this->operator()(std::any_cast<option_value_type>(cmp));
+    }
 
     /*!\brief The constructor.
      * \param[in] min_ Minimum set for the range to test.
@@ -1038,34 +1086,6 @@ private:
 
 namespace detail
 {
-
-/*!\brief Validator that always returns true.
- * \ingroup validators
- * \implements sharg::validator
- *
- * \details
- *
- * The default validator is needed to make the validator parameter of
- * parser::add_option and parser::add_option optional.
- *
- * \remark For a complete overview, take a look at \ref parser
- */
-struct default_validator
-{
-    //!\brief Dummy type needed to model sharg::validator but any type is accepted in the `operator()`.
-    using option_value_type = std::any;
-
-    //!\brief Value cmp always passes validation for any type and never throws.
-    template <typename option_value_t>
-    void operator()(option_value_t const & /*cmp*/) const noexcept
-    {}
-
-    //!\brief Since no validation is happening the help message is empty.
-    std::string get_help_page_message() const
-    {
-        return "";
-    }
-};
 
 /*!\brief A helper struct to chain validators recursively via the pipe operator.
  *\ingroup validators
