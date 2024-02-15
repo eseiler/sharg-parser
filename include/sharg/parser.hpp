@@ -13,6 +13,7 @@
 #include <variant>
 
 #include <sharg/config.hpp>
+#include <sharg/detail/format_empty.hpp>
 #include <sharg/detail/format_help.hpp>
 #include <sharg/detail/format_html.hpp>
 #include <sharg/detail/format_man.hpp>
@@ -734,7 +735,8 @@ private:
      *
      * The format is set in the function parser::init.
      */
-    std::variant<detail::format_parse,
+    std::variant<detail::format_empty,
+                 detail::format_parse,
                  detail::format_help,
                  detail::format_short_help,
                  detail::format_version,
@@ -742,7 +744,7 @@ private:
                  detail::format_man,
                  detail::format_tdl,
                  detail::format_copyright>
-        format{detail::format_help{{}, {}, false}}; // Will be overwritten in any case.
+        format{};
 
     //!\brief List of option/flag identifiers that are already used.
     std::set<std::string> used_option_ids{"h", "hh", "help", "advanced-help", "export-help", "version", "copyright"};
@@ -791,8 +793,6 @@ private:
 
         executable_name.emplace_back(arguments[0]);
 
-        bool special_format_was_set{false};
-
         // Helper function for going to the next argument. This makes it more obvious that we are
         // incrementing `it` (version-check, and export-help).
         auto go_to_next_arg = [this](auto & it, std::string_view message) -> auto
@@ -836,27 +836,22 @@ private:
 
             if (arg == "-h" || arg == "--help")
             {
-                special_format_was_set = true;
                 format = detail::format_help{subcommands, version_check_dev_decision, false};
             }
             else if (arg == "-hh" || arg == "--advanced-help")
             {
-                special_format_was_set = true;
                 format = detail::format_help{subcommands, version_check_dev_decision, true};
             }
             else if (arg == "--version")
             {
-                special_format_was_set = true;
                 format = detail::format_version{};
             }
             else if (arg == "--copyright")
             {
-                special_format_was_set = true;
                 format = detail::format_copyright{};
             }
             else if (arg.substr(0, 13) == "--export-help") // --export-help=man is also allowed
             {
-                special_format_was_set = true;
 
                 std::string_view export_format;
 
@@ -901,7 +896,8 @@ private:
             }
         }
 
-        if (special_format_was_set)
+        // A special format was set. We do not need to parse the format_arguments.
+        if (!std::holds_alternative<detail::format_empty>(format))
             return;
 
         // All special options have been handled. If there are no arguments left and we do not have a subparser,
