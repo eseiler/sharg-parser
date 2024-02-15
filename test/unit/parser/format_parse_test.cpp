@@ -680,17 +680,43 @@ TEST_F(format_parse_test, subcommand_parser_success)
 
 TEST_F(format_parse_test, subcommand_parser_error)
 {
+    auto parser = get_parser();
+
+    constexpr std::string_view expected_message =
+        "Too many arguments provided. Please see -h/--help for more information.\n"
+        "If you intended to execute a subcommand, it is possible that you have misspelled it.\n"
+        "Available subcommands are: [sub1].\n";
+
+    auto check_error = [&parser, &expected_message](char const * file, int line)
+    {
+        ::testing::ScopedTrace trace(file, line, "check_error");
+        try
+        {
+            parser.parse();
+            FAIL();
+        }
+        catch (sharg::too_many_arguments const & exception)
+        {
+            std::string_view const actual_message{exception.what()};
+            EXPECT_EQ(expected_message, actual_message);
+        }
+        catch (...)
+        {
+            FAIL();
+        }
+    };
+
     // incorrect sub command regardless of following arguments, https://github.com/seqan/seqan3/issues/2172
-    auto top_level_parser = get_subcommand_parser({"subiddysub", "-f"}, {"sub1"});
-    EXPECT_THROW(top_level_parser.parse(), sharg::parser_error);
+    parser = get_subcommand_parser({"subiddysub", "-f"}, {"sub1"});
+    check_error(__FILE__, __LINE__);
 
     // incorrect sub command with no other arguments
-    top_level_parser = get_subcommand_parser({"subiddysub"}, {"sub1"});
-    EXPECT_THROW(top_level_parser.parse(), sharg::parser_error);
+    parser = get_subcommand_parser({"subiddysub"}, {"sub1"});
+    check_error(__FILE__, __LINE__);
 
     // incorrect sub command with trailing special option, https://github.com/seqan/sharg-parser/issues/171
-    top_level_parser = get_subcommand_parser({"subiddysub", "-h"}, {"sub1"});
-    EXPECT_THROW(top_level_parser.parse(), sharg::parser_error);
+    parser = get_subcommand_parser({"subiddysub", "-h"}, {"sub1"});
+    check_error(__FILE__, __LINE__);
 }
 
 TEST_F(format_parse_test, issue1544)
