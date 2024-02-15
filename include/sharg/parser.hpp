@@ -425,7 +425,8 @@ public:
         // User input sanitization must happen before version check!
         verify_app_and_subcommand_names();
 
-        init();
+        // Determine the format and subcommand.
+        determine_format_and_subcommand();
 
         // If a subcommand was provided, check that it is valid.
         verify_subcommand();
@@ -787,52 +788,65 @@ private:
      *
      * If `--export-help` is specified with a value other than html, man, cwl or ctd, an sharg::parser_error is thrown.
      */
-    void init()
+    void determine_format_and_subcommand()
     {
         assert(!arguments.empty());
+        auto it = arguments.begin();
 
-        executable_name.emplace_back(arguments[0]);
+        executable_name.emplace_back(*it);
+        ++it;
 
         // Helper function for going to the next argument. This makes it more obvious that we are
         // incrementing `it` (version-check, and export-help).
-        auto go_to_next_arg = [this](auto & it, std::string_view message) -> auto
+        auto go_to_next_arg = [this, &it](std::string_view message) -> auto
         {
+            assert(it != arguments.end());
+
             if (++it == arguments.end())
                 throw too_few_arguments{message.data()};
         };
 
-        // start at 1 to skip binary name
-        for (auto it = ++arguments.begin(); it != arguments.end(); ++it)
+        // Helper function for finding and processing subcommands.
+        auto found_and_processed_subcommand = [this, &it](std::string_view arg) -> bool
+        {
+            if (subcommands.empty())
+                return false;
+
+            if (std::ranges::find(subcommands, arg) != subcommands.end())
+            {
+                sub_parser = std::make_unique<parser>(info.app_name + "-" + arg.data(),
+                                                      std::vector<std::string>{it, arguments.end()},
+                                                      update_notifications::off);
+
+                // Add the original calls to the front, e.g. ["raptor"],
+                // s.t. ["raptor", "build"] will be the list after constructing the subparser
+                sub_parser->executable_name.insert(sub_parser->executable_name.begin(),
+                                                   executable_name.begin(),
+                                                   executable_name.end());
+                return true;
+            }
+            else
+            {
+                // Positional options are forbidden by design.
+                // Flags and options, which both start with '-', are allowed for the top-level parser.
+                // Otherwise, this is a wrongly spelled subcommand. The error will be thrown in parse().
+                if (!arg.empty() && arg[0] != '-')
+                {
+                    format_arguments.emplace_back(arg);
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        // Process the arguments.
+        for (; it != arguments.end(); ++it)
         {
             std::string_view arg{*it};
 
-            if (!subcommands.empty()) // this is a top_level parser
-            {
-                if (std::ranges::find(subcommands, arg) != subcommands.end()) // identified subparser
-                {
-                    sub_parser = std::make_unique<parser>(info.app_name + "-" + arg.data(),
-                                                          std::vector<std::string>{it, arguments.end()},
-                                                          update_notifications::off);
-
-                    // Add the original calls to the front, e.g. ["raptor"],
-                    // s.t. ["raptor", "build"] will be the list after constructing the subparser
-                    sub_parser->executable_name.insert(sub_parser->executable_name.begin(),
-                                                       executable_name.begin(),
-                                                       executable_name.end());
-                    break;
-                }
-                else
-                {
-                    // Options and positional options are forbidden by design.
-                    // Flags starting with '-' are allowed for the top-level parser.
-                    // Otherwise, this is a wrongly spelled subcommand. The error will be thrown in parse().
-                    if (!arg.empty() && arg[0] != '-')
-                    {
-                        format_arguments.emplace_back(arg);
-                        break;
-                    }
-                }
-            }
+            if (found_and_processed_subcommand(arg))
+                break;
 
             if (arg == "-h" || arg == "--help")
             {
@@ -850,28 +864,29 @@ private:
             {
                 format = detail::format_copyright{};
             }
-            else if (arg.substr(0, 13) == "--export-help") // --export-help=man is also allowed
+            else if (std::string_view const export_cli{"--export-help"}; arg.starts_with(export_cli))
             {
+                arg.remove_prefix(export_cli.size());
 
-                std::string_view export_format;
-
-                if (arg.size() > 13)
+                // --export-help man
+                if (arg.empty())
                 {
-                    export_format = arg.substr(14);
+                    go_to_next_arg("Option --export-help must be followed by a value.");
+                    arg = *it;
                 }
-                else
+                else // --export-help=man
                 {
-                    go_to_next_arg(it, "Option --export-help must be followed by a value.");
-                    export_format = *it;
+                    // Todo: This skips any separator, not just '='. --export-helppman would be accepted.
+                    arg.remove_prefix(1u);
                 }
 
-                if (export_format == "html")
+                if (arg == "html")
                     format = detail::format_html{subcommands, version_check_dev_decision};
-                else if (export_format == "man")
+                else if (arg == "man")
                     format = detail::format_man{subcommands, version_check_dev_decision};
-                else if (export_format == "ctd")
+                else if (arg == "ctd")
                     format = detail::format_tdl{detail::format_tdl::FileFormat::CTD};
-                else if (export_format == "cwl")
+                else if (arg == "cwl")
                     format = detail::format_tdl{detail::format_tdl::FileFormat::CWL};
                 else
                     throw validation_error{"Validation failed for option --export-help: "
@@ -880,7 +895,7 @@ private:
             }
             else if (arg == "--version-check")
             {
-                go_to_next_arg(it, "Option --version-check must be followed by a value.");
+                go_to_next_arg("Option --version-check must be followed by a value.");
                 arg = *it;
 
                 if (arg == "1" || arg == "true")
