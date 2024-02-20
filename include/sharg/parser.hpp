@@ -360,7 +360,6 @@ public:
      * \throws sharg::too_many_arguments if the command line call contained more arguments than expected.
      * \throws sharg::too_few_arguments if the command line call contained less arguments than expected.
      * \throws sharg::validation_error if the argument was not excepted by the provided validator.
-     * \throws sharg::user_input_error if a subparser was configured at construction but a subcommand is missing.
      *
      * \details
      *
@@ -427,9 +426,6 @@ public:
 
         // Determine the format and subcommand.
         determine_format_and_subcommand();
-
-        // If a subcommand was provided, check that it is valid.
-        verify_subcommand();
 
         // Apply all defered operations to the parser, e.g., `add_option`, `add_flag`, `add_positional_option`.
         for (auto & operation : operations)
@@ -1074,27 +1070,6 @@ private:
             std::promise<bool> app_version_prom;
             version_check_future = app_version_prom.get_future();
             app_version(std::move(app_version_prom));
-        }
-    }
-
-    /*!\brief Verifies that the subcommand was correctly specified.
-     * \throws sharg::user_input_error if a subparser was configured at construction but a subcommand is missing.
-     */
-    inline void verify_subcommand()
-    {
-        if (std::holds_alternative<detail::format_parse>(format) && !subcommands.empty() && sub_parser == nullptr)
-        {
-            assert(!subcommands.empty());
-            std::string subcommands_str{"["};
-            for (std::string const & command : subcommands)
-                subcommands_str += command + ", ";
-            subcommands_str.replace(subcommands_str.size() - 2, 2, "]"); // replace last ", " by "]"
-
-            throw user_input_error{"You misspelled the subcommand! Please specify which sub-program "
-                                   "you want to use: one of "
-                                   + subcommands_str
-                                   + ". Use -h/--help for more "
-                                     "information."};
         }
     }
 
