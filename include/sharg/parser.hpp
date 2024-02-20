@@ -864,9 +864,9 @@ private:
             {
                 format = detail::format_copyright{};
             }
-            else if (std::string_view const export_cli{"--export-help"}; arg.starts_with(export_cli))
+            else if (arg == "--export-help" || arg.starts_with("--export-help="))
             {
-                arg.remove_prefix(export_cli.size());
+                arg.remove_prefix(std::string_view{"--export-help"}.size());
 
                 // --export-help man
                 if (arg.empty())
@@ -876,7 +876,6 @@ private:
                 }
                 else // --export-help=man
                 {
-                    // Todo: This skips any separator, not just '='. --export-helppman would be accepted.
                     arg.remove_prefix(1u);
                 }
 
