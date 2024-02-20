@@ -881,3 +881,38 @@ TEST_F(format_parse_test, executable_name)
     EXPECT_EQ(executable_name[0], "parser_test");
     EXPECT_EQ(executable_name[1], "build");
 }
+
+TEST_F(format_parse_test, same_object_flag_and_option)
+{
+    bool flag_value{false};
+
+    // Flags are evaluated after options
+    auto parser = get_parser("-o", "true");
+
+    EXPECT_NO_THROW(parser.add_option(flag_value, sharg::config{.short_id = 'o'}));
+    EXPECT_NO_THROW(parser.add_flag(flag_value, sharg::config{.short_id = 'f'}));
+    EXPECT_EQ(flag_value, false);
+    EXPECT_NO_THROW(parser.parse());
+    EXPECT_EQ(flag_value, false); // option sets to true, but flag sets to false
+
+    // Because this option syntax is also allowed
+    parser = get_parser("-otrue");
+
+    EXPECT_NO_THROW(parser.add_option(flag_value, sharg::config{.short_id = 'o'}));
+    EXPECT_EQ(flag_value, false);
+    EXPECT_NO_THROW(parser.parse());
+    EXPECT_EQ(flag_value, true); // No parser.add_flag which would set the value to false
+
+    // And this flag syntax is allowed
+    parser = get_parser("-otrue");
+    std::array<bool, 5> flag_values{false, false, false, false, false};
+
+    EXPECT_NO_THROW(parser.add_flag(flag_values[0], sharg::config{.short_id = 'o'}));
+    EXPECT_NO_THROW(parser.add_flag(flag_values[1], sharg::config{.short_id = 't'}));
+    EXPECT_NO_THROW(parser.add_flag(flag_values[2], sharg::config{.short_id = 'r'}));
+    EXPECT_NO_THROW(parser.add_flag(flag_values[3], sharg::config{.short_id = 'u'}));
+    EXPECT_NO_THROW(parser.add_flag(flag_values[4], sharg::config{.short_id = 'e'}));
+    EXPECT_TRUE(std::ranges::none_of(flag_values, std::identity{})); // All false
+    EXPECT_NO_THROW(parser.parse());
+    EXPECT_TRUE(std::ranges::all_of(flag_values, std::identity{})); // All true
+}
