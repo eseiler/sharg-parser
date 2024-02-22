@@ -537,34 +537,3 @@ TEST_F(format_help_test, copyright)
     EXPECT_EQ(get_parse_cout_on_exit(parser), expected);
 }
 
-TEST_F(format_help_test, subcommand_parser)
-{
-    int option_value{};
-
-    auto parser = get_subcommand_parser({"-h"}, {"sub1", "sub2"});
-    parser.info.description.push_back("description");
-    parser.add_option(option_value, sharg::config{.short_id = 'f', .long_id = "foo", .description = "foo bar."});
-
-    std::string expected = "test_parser\n"
-                           "===========\n"
-                           "\n"
-                           "DESCRIPTION\n"
-                           "    description\n"
-                           "\n"
-                           "SUBCOMMANDS\n"
-                           "    This program must be invoked with one of the following subcommands:\n"
-                           "    - sub1\n"
-                           "    - sub2\n"
-                           "    See the respective help page for further details (e.g. by calling\n"
-                           "    test_parser sub1 -h).\n"
-                           "\n"
-                           "    The following options below belong to the top-level parser and need to be\n"
-                           "    specified before the subcommand key word. Every argument after the\n"
-                           "    subcommand key word is passed on to the corresponding sub-parser.\n"
-                           "\nOPTIONS\n"
-                           "    -f, --foo (signed 32 bit integer)\n"
-                           "          foo bar. Default: 0\n"
-                           "\n"
-                         + basic_options_str + "\n" + basic_version_str;
-    EXPECT_EQ(get_parse_cout_on_exit(parser), expected);
-}

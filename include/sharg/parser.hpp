@@ -426,6 +426,9 @@ public:
         // Determine the format and subcommand.
         determine_format_and_subcommand();
 
+        // If a subcommand was provided, check that it is valid.
+        verify_subcommand();
+
         // Apply all defered operations to the parser, e.g., `add_option`, `add_flag`, `add_positional_option`.
         for (auto & operation : operations)
             operation();
@@ -821,7 +824,7 @@ private:
             }
             else
             {
-                // Positional options are forbidden by design.
+                // Positional options are forbidden by design. Todo: Allow options. Forbidden in check_option_config.
                 // Flags and options, which both start with '-', are allowed for the top-level parser.
                 // Otherwise, this is a wrongly spelled subcommand. The error will be thrown in parse().
                 if (!arg.starts_with('-'))
@@ -971,6 +974,9 @@ private:
     template <typename validator_t>
     void verify_option_config(config<validator_t> const & config)
     {
+        if (!subcommands.empty())
+            throw design_error{"You may only specify flags for the top-level parser."};
+
         verify_identifiers(config.short_id, config.long_id);
 
         if (config.required && !config.default_message.empty())
@@ -999,7 +1005,7 @@ private:
             throw design_error{"Positional options are always required and therefore cannot be advanced nor hidden!"};
 
         if (!subcommands.empty())
-            throw design_error{"You may only specify flags and options for the top-level parser."};
+            throw design_error{"You may only specify flags for the top-level parser."};
 
         if (has_positional_list_option)
             throw design_error{"You added a positional option with a list value before so you cannot add "
@@ -1069,6 +1075,27 @@ private:
         }
     }
 
+    /*!\brief Verifies that the subcommand was correctly specified.
+     * \throws sharg::too_few_arguments if a subparser was configured at construction but a subcommand is missing.
+     */
+    inline void verify_subcommand()
+    {
+        if (std::holds_alternative<detail::format_parse>(format) && !subcommands.empty() && sub_parser == nullptr)
+        {
+            assert(!subcommands.empty());
+            std::string subcommands_str{"["};
+            for (std::string const & command : subcommands)
+                subcommands_str += command + ", ";
+            subcommands_str.replace(subcommands_str.size() - 2, 2, "]"); // replace last ", " by "]"
+
+            throw too_few_arguments{"You misspelled the subcommand! Please specify which sub-program "
+                                    "you want to use: one of "
+                                    + subcommands_str
+                                    + ". Use -h/--help for more "
+                                      "information."};
+        }
+    }
+
     /*!\brief Parses the command line arguments according to the format.
      * \throws sharg::option_declared_multiple_times if an option that is not a list was declared multiple times.
      * \throws sharg::user_input_error if an incorrect argument is given as (positional) option value.
@@ -1089,25 +1116,7 @@ private:
                 f.parse(info);
         };
 
-        try
-        {
-            std::visit(std::move(format_parse_fn), format);
-        }
-        catch (sharg::too_many_arguments const & exception)
-        {
-            if (subcommands.empty() || sub_parser)
-                throw;
-
-            std::string message = exception.what();
-            message += "\nIf you intended to execute a subcommand, it is possible that you have misspelled it.\n"
-                       "Available subcommands are: [";
-
-            for (std::string const & command : subcommands)
-                message += command + ", ";
-            message.replace(message.size() - 2, 2, "].\n"); // replace last ", " by "].\n"
-
-            throw too_many_arguments{message};
-        }
+        std::visit(std::move(format_parse_fn), format);
     }
 };
 
