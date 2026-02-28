@@ -24,6 +24,19 @@ The following API changes should be documented as such:
 If possible, provide tooling that performs the changes, e.g. a shell-script.
 -->
 
+# Release 1.2.2
+
+## Bug fixes
+
+* Resolved an issue preventing `seqan3/std/charconv' from working on macOS
+  ([\#304](https://github.com/seqan/sharg-parser/pull/304)).
+
+# Release 1.2.1
+
+## Bug fixes
+
+* Updated the TDL dependency ([#300](https://github.com/seqan/sharg-parser/pull/300)).
+
 # Release 1.2.0
 
 ## Features
