@@ -86,8 +86,12 @@ IncludeBlocks:   Regroup
 IncludeCategories:
   - Regex:           '(<gtest/.*|<benchmark/.*)'
     Priority:        1
+  - Regex:           '(<sharg/std/charconv>)'
+    Priority:        2
+    SortPriority:    1
   - Regex:           '(<[[:alnum:]._]+>|<sharg/std/.*>)'
     Priority:        2
+    SortPriority:    2
   - Regex:           '<sdsl/'
     Priority:        3
   - Regex:           '<sharg/'

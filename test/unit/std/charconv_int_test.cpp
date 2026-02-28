@@ -4,15 +4,13 @@
 
 #include <gtest/gtest.h>
 
-#if __has_include(<charconv>)
 // make sure that including the std header does not produce any errors
 // see https://github.com/seqan/seqan3/issues/2352
-#    include <charconv>
-#endif // __has_include(<charconv>)
+#include <sharg/std/charconv>
+#include <charconv>
 #include <cmath>
 #include <iostream>
 #include <limits>
-#include <sharg/std/charconv>
 
 // =============================================================================
 // std::from_chars for integral types
